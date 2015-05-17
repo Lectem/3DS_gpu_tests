@@ -162,7 +162,7 @@ int main(int argc, char** argv)
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_REPLACE, GPU_REPLACE,
-                0xCCCCCCCC
+                0xAABBCCDD
         );
 
         //Display the buffers data
