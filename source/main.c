@@ -100,16 +100,15 @@ int main(int argc, char** argv)
     }
     reportFile = fopen("gpuTestReport.txt","w");
 
+    u32 input =0;
+
     if(!test_texture)printf("couldn't allocate test_texture\n");
     do{
         hidScanInput();
         u32 keys = keysDown();
         if(keys&KEY_START)break; //Stop the program when Start is pressed
-        if(keys & KEY_DOWN && alphasource >0) { alphasource--; }
-        if(keys&KEY_UP && alphasource <0xF) { alphasource++; }
-        if(keys & KEY_LEFT && colorsource >0) { colorsource--; }
-        if(keys&KEY_RIGHT && colorsource<0xF) { colorsource++; }
 
+        fill_test_textures(0,RGBA8(input,0x80,0x80,0xFF));
 
         gpuStartFrame();
         //Setup the buffers data
@@ -157,12 +156,12 @@ int main(int argc, char** argv)
         int texenvnum=0;
         GPU_SetTexEnv(
                 texenvnum,
-                GPU_TEVSOURCES(colorsource, 0, 0),
-                GPU_TEVSOURCES(alphasource, 0, 0),
+                GPU_TEVSOURCES(GPU_CONSTANT, GPU_TEXTURE0, 0),
+                GPU_TEVSOURCES(GPU_TEXTURE0, GPU_TEXTURE0, 0),
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_TEVOPERANDS(0, 0, 0),
-                GPU_REPLACE, GPU_REPLACE,
-                0xCCCCCCCC
+                GPU_DOT3_RGB, GPU_REPLACE,
+                0x808080A0
         );
 
         //Display the buffers data
@@ -170,16 +169,14 @@ int main(int argc, char** argv)
 
         gpuEndFrame();
 
-        if(keysDown()&KEY_A)
-        {
-            printf("cSource=%1x aSource=%1x gpuColor=%x\n",colorsource, alphasource,(unsigned int)gpuColorBuffer[0]);
-            fprintf(reportFile,"cSource=%1x aSource=%1x gpuColor=%x\n",colorsource, alphasource,(unsigned int)gpuColorBuffer[0]);
-        }
+        if(gpuColorBuffer[0] != 0xFFFFFFFF)printf("input %x output %x \n",input, gpuColorBuffer[0]);
+
         if(reportFile)
         {
-            //fprintf(reportFile,"%x\t%x\n", alphasource,(gpuColorBuffer[0]>>24)&0xFF);
+            fprintf(reportFile,"%x\t%x\n", input,(gpuColorBuffer[0]>>24)&0xFF);
         }
-    }while(aptMainLoop() );
+
+    }while(aptMainLoop() && input++ <255);
 
 
     if(reportFile)

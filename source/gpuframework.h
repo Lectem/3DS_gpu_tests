@@ -20,7 +20,8 @@
 #define my_assert(e) ((e) ? (void)0 : _my_assert("assert failed at " __FILE__ ":" LINE_STRING " (" #e ")\n"))
 void _my_assert(char * text);
 
-#define RGBA8(r,g,b,a) (((r)&0xFF) | (((g)&0xFF)<<8) | (((b)&0xFF)<<16) | (((a)&0xFF)<<24))
+//#define RGBA8(r,g,b,a) (((r)&0xFF) | (((g)&0xFF)<<8) | (((b)&0xFF)<<16) | (((a)&0xFF)<<24))
+#define RGBA8(r,g,b,a) (((a)&0xFF) | (((b)&0xFF)<<8) | (((g)&0xFF)<<16) | (((r)&0xFF)<<24))
 
 u32*gpuColorBuffer;
 u32*gpuDBuffer;
