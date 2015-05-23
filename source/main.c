@@ -108,7 +108,7 @@ int main(int argc, char** argv)
         u32 keys = keysDown();
         if(keys&KEY_START)break; //Stop the program when Start is pressed
 
-        fill_test_textures(0,RGBA8(input,0x80,0x80,0xFF));
+        fill_test_textures(0,RGBA8(input,input,input,0xFF));
 
         gpuStartFrame();
         //Setup the buffers data
@@ -161,7 +161,7 @@ int main(int argc, char** argv)
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_DOT3_RGB, GPU_REPLACE,
-                0x808080A0
+                0xFF807F80
         );
 
         //Display the buffers data
