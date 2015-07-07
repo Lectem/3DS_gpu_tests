@@ -22,12 +22,12 @@
 //Our data
 static const vertex_pos_col test_mesh[] =
         {
-                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{0.0f,0.0f}},
-                {{400.0f, 0.0f, 0.5f},BG_COLOR_U8,{0.0f,0.0f}},
-                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{0.0f,0.0f}},
-                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{0.0f,0.0f}},
-                {{0.0f, 240.0f, 0.5f},BG_COLOR_U8,{0.0f,0.0f}},
-                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{0.0f,0.0f}}
+                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{-0.5f,-0.5f}},
+                {{400.0f, 0.0f, 0.5f},BG_COLOR_U8,{1.5f,-0.5f}},
+                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{1.5f,1.5f}},
+                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{1.5f,1.5f}},
+                {{0.0f, 240.0f, 0.5f},BG_COLOR_U8,{-0.5f,1.5f}},
+                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{-0.5f,-0.5f}}
         };
 
 static void* test_data = NULL;
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
     test_texture1 = linearMemAlign(test_texture_w*test_texture_h*sizeof(u32),0x80);
     test_texture2 = linearMemAlign(test_texture_w*test_texture_h*sizeof(u32),0x80);
 
-    fill_test_textures(0,RGBA8(0x11, 0x11, 0x11, 0x11));
+    fill_test_textures(0,RGBA8(0xFF, 0x00, 0x00, 0xFF));
     fill_test_textures(1,RGBA8(0x22, 0x22, 0x22, 0x22));
     fill_test_textures(2,RGBA8(0x33, 0x33, 0x33, 0x33));
 
@@ -99,16 +99,19 @@ int main(int argc, char** argv)
         ((vertex_pos_col*)test_data)[i].color.a=255;
     }
     reportFile = fopen("gpuTestReport.txt","w");
+    int wrap_mode = 0;
 
     if(!test_texture)printf("couldn't allocate test_texture\n");
     do{
         hidScanInput();
         u32 keys = keysDown();
         if(keys&KEY_START)break; //Stop the program when Start is pressed
-        if(keys & KEY_DOWN && alphasource >0) { alphasource--; }
+        if(keys&KEY_DOWN && alphasource >0) { alphasource--; }
         if(keys&KEY_UP && alphasource <0xF) { alphasource++; }
-        if(keys & KEY_LEFT && colorsource >0) { colorsource--; }
+        if(keys&KEY_LEFT && colorsource >0) { colorsource--; }
         if(keys&KEY_RIGHT && colorsource<0xF) { colorsource++; }
+        if(keys&KEY_L && wrap_mode >0) { wrap_mode--; printf("Wrapmode%d\n",wrap_mode);}
+        if(keys&KEY_R && wrap_mode<3) { wrap_mode++;  printf("Wrapmode%d\n",wrap_mode);}
 
 
         gpuStartFrame();
@@ -125,7 +128,7 @@ int main(int argc, char** argv)
                 (u8[]) {3} // number of attributes for each buffer
         );
 
-        GPU_SetTextureEnable(GPU_TEXUNIT0 | GPU_TEXUNIT1 | GPU_TEXUNIT2);
+        GPU_SetTextureEnable(GPU_TEXUNIT0);
 
         GPU_SetTexture(
                 GPU_TEXUNIT0,
@@ -133,9 +136,11 @@ int main(int argc, char** argv)
                 // width and height swapped?
                 test_texture_h,
                 test_texture_w,
-                GPU_TEXTURE_MAG_FILTER(GPU_NEAREST) | GPU_TEXTURE_MIN_FILTER(GPU_NEAREST),
+                GPU_TEXTURE_MAG_FILTER(GPU_NEAREST) | GPU_TEXTURE_MIN_FILTER(GPU_NEAREST) |
+                GPU_TEXTURE_WRAP_S(wrap_mode) | GPU_TEXTURE_WRAP_T(wrap_mode),
                 GPU_RGBA8
         );
+        GPUCMD_AddWrite(GPUREG_0081, 0xFFFF0000);
         GPU_SetTexture(
                 GPU_TEXUNIT1,
                 (u32 *)osConvertVirtToPhys((u32) test_texture1),
@@ -157,8 +162,8 @@ int main(int argc, char** argv)
         int texenvnum=0;
         GPU_SetTexEnv(
                 texenvnum,
-                GPU_TEVSOURCES(colorsource, 0, 0),
-                GPU_TEVSOURCES(alphasource, 0, 0),
+                GPU_TEVSOURCES(GPU_TEXTURE0, GPU_TEXTURE0, 0),
+                GPU_TEVSOURCES(GPU_TEXTURE0, GPU_TEXTURE0, 0),
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_TEVOPERANDS(0, 0, 0),
                 GPU_REPLACE, GPU_REPLACE,
@@ -169,7 +174,6 @@ int main(int argc, char** argv)
         GPU_DrawArray(GPU_TRIANGLES, sizeof(test_mesh) / sizeof(test_mesh[0]));
 
         gpuEndFrame();
-
         if(keysDown()&KEY_A)
         {
             printf("cSource=%1x aSource=%1x gpuColor=%x\n",colorsource, alphasource,(unsigned int)gpuColorBuffer[0]);
