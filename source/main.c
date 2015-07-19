@@ -22,48 +22,28 @@
 //Our data
 static const vertex_pos_col test_mesh[] =
         {
-                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{-0.5f,-0.5f}},
-                {{400.0f, 0.0f, 0.5f},BG_COLOR_U8,{1.5f,-0.5f}},
-                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{1.5f,1.5f}},
-                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{1.5f,1.5f}},
-                {{0.0f, 240.0f, 0.5f},BG_COLOR_U8,{-0.5f,1.5f}},
-                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{-0.5f,-0.5f}}
+                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{-0.5f,-0.0f}},
+                {{400.0f, 0.0f, 0.5f},BG_COLOR_U8,{1.0f,-0.0f}},
+                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{1.0f,2.5f}},
+                {{400.0f, 240.0f, 0.5f},BG_COLOR_U8,{1.0f,2.5f}},
+                {{0.0f, 240.0f, 0.5f},BG_COLOR_U8,{-0.5f,2.5f}},
+                {{0.0f  , 0.0f,       0.5f},BG_COLOR_U8,{-0.5f,-0.0f}}
         };
 
 static void* test_data = NULL;
 
 static u32* test_texture=NULL;
-static u32* test_texture1=NULL;
-static u32* test_texture2=NULL;
-static const u16 test_texture_w=8;
-static const u16 test_texture_h=8;
-u8 colorsource = 0;
-u8 alphasource = 0;
+static const u16 test_texture_w=256;
+static const u16 test_texture_h=256;
+u8 wrap_s = 0;
+u8 wrap_t = 0;
 
-void fill_test_textures(u8 tex,u32 color)
-{
-    int px;
-    for(px=0;px < test_texture_h*test_texture_w;++px)
-    {
-        switch(tex)
-        {
-            case 0:
-            test_texture[px] = color;
-                break;
-            case 1:
-            test_texture1[px] = color;
-                break;
-            case 2:
-            test_texture2[px] = color;
-                break;
-            default:break;
-        }
-    }
-}
-
-FILE* reportFile = NULL;
-
-
+extern const struct {
+  u32  	 width;
+  u32  	 height;
+  u32  	 bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */ 
+  u8 	 pixel_data[256 * 256 * 4 + 1];
+} texture_data;
 int main(int argc, char** argv)
 {
 
@@ -83,35 +63,19 @@ int main(int argc, char** argv)
     memcpy(test_data, test_mesh, sizeof(test_mesh)); //Copy our data
     //Allocate a RGBA8 texture with dimensions of 1x1
     test_texture = linearMemAlign(test_texture_w*test_texture_h*sizeof(u32),0x80);
-    test_texture1 = linearMemAlign(test_texture_w*test_texture_h*sizeof(u32),0x80);
-    test_texture2 = linearMemAlign(test_texture_w*test_texture_h*sizeof(u32),0x80);
 
-    fill_test_textures(0,RGBA8(0xFF, 0x00, 0x00, 0xFF));
-    fill_test_textures(1,RGBA8(0x22, 0x22, 0x22, 0x22));
-    fill_test_textures(2,RGBA8(0x33, 0x33, 0x33, 0x33));
-
-    int i;
-    for(i=0;i<sizeof(test_mesh) / sizeof(test_mesh[0]);++i)
-    {
-        ((vertex_pos_col*)test_data)[i].color.r=255;
-        ((vertex_pos_col*)test_data)[i].color.g=255;
-        ((vertex_pos_col*)test_data)[i].color.b=255;
-        ((vertex_pos_col*)test_data)[i].color.a=255;
-    }
-    reportFile = fopen("gpuTestReport.txt","w");
-    int wrap_mode = 0;
-
+    int i;	
+	copyTextureAndTile((u8*)test_texture,texture_data.pixel_data,texture_data.width ,texture_data.height);
+	
     if(!test_texture)printf("couldn't allocate test_texture\n");
     do{
         hidScanInput();
         u32 keys = keysDown();
         if(keys&KEY_START)break; //Stop the program when Start is pressed
-        if(keys&KEY_DOWN && alphasource >0) { alphasource--; }
-        if(keys&KEY_UP && alphasource <0xF) { alphasource++; }
-        if(keys&KEY_LEFT && colorsource >0) { colorsource--; }
-        if(keys&KEY_RIGHT && colorsource<0xF) { colorsource++; }
-        if(keys&KEY_L && wrap_mode >0) { wrap_mode--; printf("Wrapmode%d\n",wrap_mode);}
-        if(keys&KEY_R && wrap_mode<3) { wrap_mode++;  printf("Wrapmode%d\n",wrap_mode);}
+        if(keys&KEY_DOWN && wrap_s >0) { wrap_s--; printf("wrap_s : %d\n",wrap_s);}
+        if(keys&KEY_UP && wrap_s <3) { wrap_s++; printf("wrap_s : %d\n",wrap_s);}
+        if(keys&KEY_LEFT && wrap_t >0) { wrap_t--; printf("wrap_t : %d\n",wrap_s);}
+        if(keys&KEY_RIGHT && wrap_t<3) { wrap_t++; printf("wrap_t : %d\n",wrap_s);}
 
 
         gpuStartFrame();
@@ -137,28 +101,10 @@ int main(int argc, char** argv)
                 test_texture_h,
                 test_texture_w,
                 GPU_TEXTURE_MAG_FILTER(GPU_NEAREST) | GPU_TEXTURE_MIN_FILTER(GPU_NEAREST) |
-                GPU_TEXTURE_WRAP_S(wrap_mode) | GPU_TEXTURE_WRAP_T(wrap_mode),
+                GPU_TEXTURE_WRAP_S(wrap_s) | GPU_TEXTURE_WRAP_T(wrap_t),
                 GPU_RGBA8
         );
-        GPUCMD_AddWrite(GPUREG_0081, 0xFFFF0000);
-        GPU_SetTexture(
-                GPU_TEXUNIT1,
-                (u32 *)osConvertVirtToPhys((u32) test_texture1),
-                // width and height swapped?
-                test_texture_h,
-                test_texture_w,
-                GPU_TEXTURE_MAG_FILTER(GPU_NEAREST) | GPU_TEXTURE_MIN_FILTER(GPU_NEAREST),
-                GPU_RGBA8
-        );
-        GPU_SetTexture(
-                GPU_TEXUNIT2,
-                (u32 *)osConvertVirtToPhys((u32) test_texture2),
-                // width and height swapped?
-                test_texture_h,
-                test_texture_w,
-                GPU_TEXTURE_MAG_FILTER(GPU_NEAREST) | GPU_TEXTURE_MIN_FILTER(GPU_NEAREST),
-                GPU_RGBA8
-        );
+//        GPUCMD_AddWrite(GPUREG_0081, 0xFFFF0000);
         int texenvnum=0;
         GPU_SetTexEnv(
                 texenvnum,
@@ -174,22 +120,8 @@ int main(int argc, char** argv)
         GPU_DrawArray(GPU_TRIANGLES, sizeof(test_mesh) / sizeof(test_mesh[0]));
 
         gpuEndFrame();
-        if(keysDown()&KEY_A)
-        {
-            printf("cSource=%1x aSource=%1x gpuColor=%x\n",colorsource, alphasource,(unsigned int)gpuColorBuffer[0]);
-            fprintf(reportFile,"cSource=%1x aSource=%1x gpuColor=%x\n",colorsource, alphasource,(unsigned int)gpuColorBuffer[0]);
-        }
-        if(reportFile)
-        {
-            //fprintf(reportFile,"%x\t%x\n", alphasource,(gpuColorBuffer[0]>>24)&0xFF);
-        }
     }while(aptMainLoop() );
 
-
-    if(reportFile)
-    {
-        fclose(reportFile);
-    }
 
     if(test_data)
     {
@@ -198,14 +130,6 @@ int main(int argc, char** argv)
     if(test_texture)
     {
         linearFree(test_texture);
-    }
-    if(test_texture1)
-    {
-        linearFree(test_texture1);
-    }
-    if(test_texture2)
-    {
-        linearFree(test_texture2);
     }
 
     gpuUIExit();

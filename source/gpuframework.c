@@ -28,9 +28,9 @@ void _my_assert(char * text)
 #define GPU_CMD_SIZE 0x40000
 
 //GPU framebuffer address
-u32*gpuColorBuffer =(u32*)0x1F119400;
+u32*gpuColorBuffer =NULL;
 //GPU depth buffer address
-u32* gpuDBuffer =(u32*)0x1F370800;
+u32* gpuDBuffer =NULL;
 
 //GPU command buffers
 u32* gpuCmd = NULL;
@@ -86,6 +86,10 @@ void gpuDisableEverything()
 void gpuUIInit()
 {
 
+    //Allocate the GPU render buffers
+    gpuColorBuffer = vramMemAlign(400*240*8, 0x100);
+    gpuDBuffer = vramMemAlign(400*240*8, 0x100);
+
     GPU_Init(NULL);//initialize GPU
 
     gfxSet3D(false);//We will not be using the 3D mode in this example
@@ -135,6 +139,8 @@ void gpuUIExit()
     shaderProgramFree(&shader);
     DVLB_Free(shader_dvlb);
     GPU_Reset(NULL, gpuCmd, GPU_CMD_SIZE); // Not really needed, but safer for the next applications ?
+    vramFree(gpuColorBuffer);
+    vramFree(gpuDBuffer);
 }
 
 void gpuStartFrame()
@@ -192,4 +198,41 @@ void GPU_SetDummyTexEnv(u8 num)
                   GPU_REPLACE,
                   GPU_REPLACE,
                   0xFFFFFFFF);
+}
+
+
+
+
+// Grabbed from Citra Emulator (citra/src/video_core/utils.h)
+static inline u32 morton_interleave(u32 x, u32 y)
+{
+	u32 i = (x & 7) | ((y & 7) << 8); // ---- -210
+	i = (i ^ (i << 2)) & 0x1313;      // ---2 --10
+	i = (i ^ (i << 1)) & 0x1515;      // ---2 -1-0
+	i = (i | (i >> 7)) & 0x3F;
+	return i;
+}
+
+//Grabbed from Citra Emulator (citra/src/video_core/utils.h)
+static inline u32 get_morton_offset(u32 x, u32 y, u32 bytes_per_pixel)
+{
+    u32 i = morton_interleave(x, y);
+    unsigned int offset = (x & ~7) * 8;
+    return (i + offset) * bytes_per_pixel;
+}
+
+
+void copyTextureAndTile(u8* dst,u8 * src,int w ,int h)
+{
+	int i, j;
+	for (j = 0; j < h; j++) {
+		for (i = 0; i < w; i++) {
+
+			u32 coarse_y = j & ~7;
+			u32 dst_offset = get_morton_offset(i, j, 4) + coarse_y * w * 4;
+
+			u32 v = ((u32 *)src)[i + (h - 1 - j)*w];
+			*(u32 *)(dst + dst_offset) = __builtin_bswap32(v);
+		}
+	}
 }
