@@ -39,10 +39,10 @@ u8 wrap_s = 0;
 u8 wrap_t = 0;
 
 extern const struct {
-  u32  	 width;
-  u32  	 height;
-  u32  	 bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */ 
-  u8 	 pixel_data[256 * 256 * 4 + 1];
+  u32       width;
+  u32       height;
+  u32       bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */ 
+  u8      pixel_data[256 * 256 * 4 + 1];
 } texture_data;
 int main(int argc, char** argv)
 {
@@ -64,9 +64,10 @@ int main(int argc, char** argv)
     //Allocate a RGBA8 texture with dimensions of 1x1
     test_texture = linearMemAlign(test_texture_w*test_texture_h*sizeof(u32),0x80);
 
-    int i;	
-	copyTextureAndTile((u8*)test_texture,texture_data.pixel_data,texture_data.width ,texture_data.height);
-	
+    int block_mode=0;
+    int i;    
+    copyTextureAndTile((u8*)test_texture,texture_data.pixel_data,texture_data.width ,texture_data.height);
+    
     if(!test_texture)printf("couldn't allocate test_texture\n");
     do{
         hidScanInput();
@@ -74,11 +75,19 @@ int main(int argc, char** argv)
         if(keys&KEY_START)break; //Stop the program when Start is pressed
         if(keys&KEY_DOWN && wrap_s >0) { wrap_s--; printf("wrap_s : %d\n",wrap_s);}
         if(keys&KEY_UP && wrap_s <3) { wrap_s++; printf("wrap_s : %d\n",wrap_s);}
-        if(keys&KEY_LEFT && wrap_t >0) { wrap_t--; printf("wrap_t : %d\n",wrap_s);}
-        if(keys&KEY_RIGHT && wrap_t<3) { wrap_t++; printf("wrap_t : %d\n",wrap_s);}
+        if(keys&KEY_LEFT && wrap_t >0) { wrap_t--; printf("wrap_t : %d\n",wrap_t);}
+        if(keys&KEY_RIGHT && wrap_t<3) { wrap_t++; printf("wrap_t : %d\n",wrap_t);}
 
-
+        if(keys&KEY_A){block_mode^=1;printf("block_mode : %d\n",block_mode);}
+        
+        
         gpuStartFrame();
+
+        // Change the block mode
+        GPUCMD_AddWrite(GPUREG_011B, block_mode);
+
+        
+        
         //Setup the buffers data
         GPU_SetAttributeBuffers(
                 3, // number of attributes
@@ -104,7 +113,7 @@ int main(int argc, char** argv)
                 GPU_TEXTURE_WRAP_S(wrap_s) | GPU_TEXTURE_WRAP_T(wrap_t),
                 GPU_RGBA8
         );
-//        GPUCMD_AddWrite(GPUREG_0081, 0xFFFF0000);
+        
         int texenvnum=0;
         GPU_SetTexEnv(
                 texenvnum,
